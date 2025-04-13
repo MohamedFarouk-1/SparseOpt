@@ -61,26 +61,17 @@ class StaticModelWrapper(torch.nn.Module):
         return outputs.logits if hasattr(outputs, "logits") else outputs.last_hidden_state
 
 class HFTracer(fx.Tracer):
-    """Custom tracer for HuggingFace models."""
+    """Custom tracer for HuggingFace models that handles leaf modules."""
     
-    def __init__(self):
+    def __init__(self, leaf_modules: Optional[List[str]] = None):
         super().__init__()
-        self.leaf_modules = {
-            torch.nn.Linear,
-            torch.nn.LayerNorm,
-            torch.nn.Dropout,
-            torch.nn.Embedding,
-            torch.nn.ModuleList,
-            torch.nn.ModuleDict
-        }
-    
+        self.leaf_modules = leaf_modules or []
+        
     def is_leaf_module(self, m: torch.nn.Module, module_qualified_name: str) -> bool:
-        return True  # Treat all modules as leaf modules for now
-    
-    def create_arg(self, a: Any) -> Any:
-        if isinstance(a, (list, tuple)) and len(a) > 0:
-            return super().create_arg([self.create_arg(x) for x in a])
-        return super().create_arg(a)
+        # Check if module class name is in leaf_modules
+        if any(leaf in m.__class__.__name__ for leaf in self.leaf_modules):
+            return True
+        return super().is_leaf_module(m, module_qualified_name)
 
 class TransformerBlockWrapper(torch.nn.Module):
     def __init__(self, block):
@@ -181,21 +172,19 @@ def create_hf_input(
     
     return inputs
 
-def trace_hf_model(model: torch.nn.Module, example_input: Union[str, Dict[str, torch.Tensor]]) -> fx.GraphModule:
+def trace_hf_model(model: torch.nn.Module, example_input: Union[str, Dict[str, torch.Tensor]], tracer: fx.Tracer) -> fx.GraphModule:
     """
     Trace a HuggingFace model using torch.fx.
     
     Args:
         model: The model to trace
         example_input: Example input for tracing (string or tokenized input dict)
+        tracer: Custom tracer for HuggingFace models
         
     Returns:
         Traced model as a GraphModule
     """
     print("Tracing model...")
-    
-    # Create HF tracer
-    tracer = HFTracer()
     
     # Trace the model
     try:
@@ -207,56 +196,52 @@ def trace_hf_model(model: torch.nn.Module, example_input: Union[str, Dict[str, t
         raise RuntimeError(f"Failed to trace model: {str(e)}")
 
 def optimize_hf_model(
-    model: PreTrainedModel,
-    tokenizer: PreTrainedTokenizer,
-    example_input: str,
-    max_sequence_length: int = 512,
-    device: Optional[str] = None
-) -> Tuple[torch.nn.Module, Dict[str, Any]]:
-    """
-    Optimize a HuggingFace model using graph optimization passes.
+    model: torch.nn.Module,
+    example_inputs: Union[Tuple[Any, ...], Dict[str, Any]],
+    leaf_modules: Optional[List[str]] = None,
+    **kwargs
+) -> torch.nn.Module:
+    """Optimize a HuggingFace model using graph optimization passes.
     
     Args:
         model: The HuggingFace model to optimize
-        tokenizer: The tokenizer for the model
-        example_input: Example input text for tracing
-        max_sequence_length: Maximum sequence length for inputs
-        device: Device to run the model on ("cuda" or "cpu")
+        example_inputs: Example inputs for tracing
+        leaf_modules: List of module class names to treat as leaf modules during tracing.
+                     Default includes common HuggingFace model classes.
+        **kwargs: Additional arguments passed to optimize_model
         
     Returns:
-        Tuple of (optimized_model, optimization_statistics)
+        The optimized model
     """
+    # Default leaf modules for common HuggingFace models
+    default_leaf_modules = [
+        "DistilBertModel",
+        "BertModel", 
+        "GPT2Block",
+        "GPT2Model"
+    ]
+    
+    # Use provided leaf modules or defaults
+    leaf_modules = leaf_modules or default_leaf_modules
+    
+    # Create static model wrapper
+    static_model = StaticModelWrapper(model)
+    
+    # Create custom tracer with leaf modules
+    tracer = HFTracer(leaf_modules=leaf_modules)
+    
+    # Trace the model
     try:
-        # Set device
-        if device is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-        model = model.to(device)
-        
-        # Create static wrapper
-        wrapped_model = StaticModelWrapper(model, max_sequence_length)
-        wrapped_model.set_tokenizer(tokenizer)
-        
-        # Trace model
-        print("Tracing model...")
-        traced_model = trace_hf_model(wrapped_model, example_input)
-        
-        # Create optimizer with passes
-        optimizer = GraphOptimizer([
-            LinearGELUFusion(),
-            LinearReLUFusion(),
-            ConvBatchNormReLUFusion(),
-            DeadNodeElimination(),
-            NodeReordering(),
-            DropoutElimination()
-        ])
-        
-        # Optimize model
-        optimized_model, stats = optimizer.optimize(traced_model, example_input)
-        return optimized_model, stats
-        
+        traced_model = trace_hf_model(static_model, example_inputs, tracer)
     except Exception as e:
-        print(f"Optimization failed: {str(e)}")
-        return None, {"error": str(e)}
+        print(f"Warning: FX tracing failed with error: {str(e)}")
+        print("Falling back to static model without tracing")
+        traced_model = static_model
+    
+    # Run optimization passes
+    optimized_model = optimize_model(traced_model, **kwargs)
+    
+    return optimized_model
 
 def create_model_input(
     tokenizer: Any,
