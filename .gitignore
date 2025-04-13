@@ -1,32 +1,57 @@
-# Python virtual environment
-.venv/
-venv/
-ENV/
-
-# Python cache files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
-dist/
+*.so
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
+.installed.cfg
+*.egg
 
-# IDE files
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Large binary files
-*.dylib
-*.so
-*.dll
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Model files
+*.pt
+*.pth
+*.onnx
+*.pb
+*.tflite
+*.h5
+*.hdf5
+*.pkl
+*.bin
+*.safetensors
 
 # Logs and databases
 *.log
 *.sqlite
+*.db
 
 # Environment variables
 .env
@@ -36,8 +61,6 @@ build/
 .coverage
 htmlcov/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Optimized ResNet model
-optimized_resnet.pt 
+# Optimized models
+optimized_*.pt
+optimized_*.pth 
