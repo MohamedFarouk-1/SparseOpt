@@ -17,19 +17,41 @@ It automatically skips models with dynamic control flow and prints a warning whe
 - **Model Optimization**: Optimize models for better performance on sparse and irregular workloads
 - **Benchmarking**: Benchmark model performance with support for both standard PyTorch models and Graph Neural Networks (GNNs)
 - **Output Consistency**: Verify that optimized models produce the same output as the original
+- **HuggingFace Support**: Optimize HuggingFace models with a simple API
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/sparseopt.git
+git clone https://github.com/MohamedFarouk-1/SparseOpt.git
 cd sparseopt
 
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# For GNN model support, uncomment the torch-geometric line in requirements.txt and reinstall
-pip install -r requirements.txt
+## Quickstart
+
+### Optimizing a HuggingFace Model
+
+```bash
+# Run the Colab test script with DistilBERT
+python examples/colab_test.py --hf-model distilbert-base-uncased
+
+# Or use the CLI
+sparseopt optimize --hf-model gpt2 --output-dir results
+```
+
+### Using the Python API
+
+```python
+from sparseopt.huggingface import optimize_hf_model
+
+# Optimize a HuggingFace model
+optimized_model, stats = optimize_hf_model("gpt2")
+
+# Print optimization statistics
+print(f"Speedup: {stats['speedup']:.2f}x")
 ```
 
 ## Usage
@@ -99,7 +121,7 @@ SparseOpt includes a sample FX-compatible GCN model for testing:
 To generate these files:
 
 ```bash
-python sample_models/gcn.py
+python examples/generate_sample_models.py
 ```
 
 ## Known Limitations

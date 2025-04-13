@@ -196,29 +196,59 @@ def trace_hf_model(model: torch.nn.Module, example_input: Union[str, Dict[str, t
         raise RuntimeError(f"Failed to trace model: {str(e)}")
 
 def optimize_hf_model(
-    model: torch.nn.Module,
-    example_inputs: Union[Dict[str, Any], Tuple[Any, ...]],
+    model: Union[torch.nn.Module, str],
+    example_inputs: Optional[Union[Dict[str, Any], Tuple[Any, ...], str]] = None,
     leaf_modules: Optional[List[str]] = None,
+    device: Optional[str] = None,
     **kwargs
 ) -> Tuple[torch.nn.Module, Dict[str, Any]]:
     """Optimize a HuggingFace model using graph optimization passes.
     
     Args:
-        model: The HuggingFace model to optimize
-        example_inputs: Example inputs for tracing
+        model: The HuggingFace model to optimize (either a model instance or model name)
+        example_inputs: Example inputs for tracing (optional - will be created if not provided)
         leaf_modules: List of module class names to treat as leaf modules during tracing.
                      Default includes common HuggingFace model classes.
+        device: Device to run the model on (optional - will be auto-detected if not provided)
         **kwargs: Additional arguments passed to optimize_model
         
     Returns:
         Tuple of (optimized_model, optimization_statistics)
     """
+    # Auto-detect device if not provided
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Handle model name string
+    tokenizer = None
+    if isinstance(model, str):
+        model_name = model
+        console.print(f"[bold blue]Loading {model_name} from HuggingFace...[/bold blue]")
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModel.from_pretrained(model_name)
+        model = model.to(device)
+        model.eval()
+        console.print(f"[bold green]Model loaded successfully![/bold green]")
+    
+    # Create example inputs if not provided
+    if example_inputs is None and tokenizer is not None:
+        example_inputs = create_model_input(tokenizer, "Hello, this is SparseOpt!")
+        example_inputs = {k: v.to(device) for k, v in example_inputs.items()}
+    elif isinstance(example_inputs, str) and tokenizer is not None:
+        example_inputs = create_model_input(tokenizer, example_inputs)
+        example_inputs = {k: v.to(device) for k, v in example_inputs.items()}
+    
     # Default leaf modules for common HuggingFace models
     default_leaf_modules = [
         "DistilBertModel",
         "BertModel", 
         "GPT2Block",
-        "GPT2Model"
+        "GPT2Model",
+        "GPTNeoBlock",
+        "GPTNeoModel",
+        "RobertaModel",
+        "T5Model",
+        "BartModel"
     ]
     
     # Use provided leaf modules or defaults
@@ -226,6 +256,8 @@ def optimize_hf_model(
     
     # Create static model wrapper
     static_model = StaticModelWrapper(model)
+    if tokenizer is not None:
+        static_model.set_tokenizer(tokenizer)
     
     # Create custom tracer with leaf modules
     tracer = HFTracer(leaf_modules=leaf_modules)
