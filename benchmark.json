@@ -1,0 +1,11 @@
+{
+  "model_name": "resnet18",
+  "total_parameters": 11689512,
+  "latency_before_ms": 36.365580558776855,
+  "latency_after_ms": 34.26566123962402,
+  "optimizations_applied": [
+    "Reorder",
+    "Fuse Linear+ReLU"
+  ],
+  "tracing_method": "FX"
+}
