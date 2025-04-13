@@ -197,10 +197,10 @@ def trace_hf_model(model: torch.nn.Module, example_input: Union[str, Dict[str, t
 
 def optimize_hf_model(
     model: torch.nn.Module,
-    example_inputs: Union[Tuple[Any, ...], Dict[str, Any]],
+    example_inputs: Union[Dict[str, Any], Tuple[Any, ...]],
     leaf_modules: Optional[List[str]] = None,
     **kwargs
-) -> torch.nn.Module:
+) -> Tuple[torch.nn.Module, Dict[str, Any]]:
     """Optimize a HuggingFace model using graph optimization passes.
     
     Args:
@@ -211,7 +211,7 @@ def optimize_hf_model(
         **kwargs: Additional arguments passed to optimize_model
         
     Returns:
-        The optimized model
+        Tuple of (optimized_model, optimization_statistics)
     """
     # Default leaf modules for common HuggingFace models
     default_leaf_modules = [
@@ -239,9 +239,9 @@ def optimize_hf_model(
         traced_model = static_model
     
     # Run optimization passes
-    optimized_model = optimize_model(traced_model, **kwargs)
+    optimized_model, stats = optimize_model(traced_model, **kwargs)
     
-    return optimized_model
+    return optimized_model, stats
 
 def create_model_input(
     tokenizer: Any,
