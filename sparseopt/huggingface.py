@@ -248,7 +248,10 @@ def optimize_hf_model(
         "GPTNeoModel",
         "RobertaModel",
         "T5Model",
-        "BartModel"
+        "BartModel",
+        "OPTModel",
+        "OPTDecoder",
+        "OPTDecoderLayer"
     ]
     
     # Use provided leaf modules or defaults
@@ -266,12 +269,32 @@ def optimize_hf_model(
     try:
         traced_model = trace_hf_model(static_model, example_inputs, tracer)
     except Exception as e:
-        print(f"Warning: FX tracing failed with error: {str(e)}")
-        print("Falling back to static model without tracing")
+        console.print(f"[yellow]Warning:[/yellow] FX tracing failed with error: {str(e)}")
+        console.print("[yellow]Falling back to static model without tracing[/yellow]")
         traced_model = static_model
     
+    # Create optimizer
+    optimizer = ModelOptimizer()
+    
+    # Apply fusion passes
+    fusion_patterns = [
+        LinearGELUFusion(),  # Linear + GELU fusion
+        LinearLayerNormFusion(),  # Linear + LayerNorm fusion
+        MHALayerNormFusion()  # MultiHeadAttention + LayerNorm fusion
+    ]
+    
     # Run optimization passes
-    optimized_model, stats = optimize_model(traced_model, **kwargs)
+    optimized_model = optimizer.optimize(
+        traced_model,
+        fusion_patterns=fusion_patterns,
+        layer_by_layer=True  # Apply optimizations layer by layer for better handling of transformer blocks
+    )
+    
+    # Get optimization statistics
+    stats = {
+        "num_fusions": sum(len(result.fusions) for result in optimizer.fusion_results.values()),
+        "fusion_results": optimizer.fusion_results
+    }
     
     return optimized_model, stats
 

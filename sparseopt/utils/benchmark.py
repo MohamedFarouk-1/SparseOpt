@@ -6,11 +6,38 @@ This module provides utilities for benchmarking model performance.
 
 import torch
 import time
-from typing import Dict, Any, Callable, Optional, Union, List
+from typing import Dict, Any, Callable, Optional, Union, List, Tuple
 from rich.console import Console
 from rich.table import Table
 
 console = Console()
+
+def get_model_info(model: torch.nn.Module) -> Dict[str, Any]:
+    """
+    Get information about a PyTorch model.
+    
+    Args:
+        model: PyTorch model to analyze
+        
+    Returns:
+        Dictionary containing model information
+    """
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    
+    # Count number of layers by type
+    layer_counts = {}
+    for name, module in model.named_modules():
+        if len(list(module.children())) == 0:  # Leaf module
+            layer_type = module.__class__.__name__
+            layer_counts[layer_type] = layer_counts.get(layer_type, 0) + 1
+    
+    return {
+        "total_params": total_params,
+        "trainable_params": trainable_params,
+        "layer_counts": layer_counts,
+        "model_name": model.__class__.__name__
+    }
 
 def benchmark_model(
     model: torch.nn.Module,

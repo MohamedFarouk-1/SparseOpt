@@ -1,153 +1,118 @@
 # SparseOpt
 
-A toolkit for optimizing sparse and irregular PyTorch models using Torch.fx graph transformations.
-
-## Overview
-
-SparseOpt is a CLI/Python tool that optimizes sparse AI models (like GNNs or MoEs) by:
-- Tracing them with `torch.fx`
-- Applying simple graph-level optimizations (like node reordering and operator fusion)
-- Benchmarking latency before and after optimization
-
-It automatically skips models with dynamic control flow and prints a warning when optimization isn't possible.
+SparseOpt is an AI model graph optimizer built on PyTorch FX. It provides tools for optimizing and benchmarking transformer models from HuggingFace.
 
 ## Features
 
-- **Model Analysis**: Analyze PyTorch models to identify sparse operations and irregular computation patterns
-- **Model Optimization**: Optimize models for better performance on sparse and irregular workloads
-- **Benchmarking**: Benchmark model performance with support for both standard PyTorch models and Graph Neural Networks (GNNs)
-- **Output Consistency**: Verify that optimized models produce the same output as the original
-- **HuggingFace Support**: Optimize HuggingFace models with a simple API
+- **Graph Optimization**: Fuses common patterns in transformer models for improved performance
+- **Benchmarking**: Measures and compares performance before and after optimization
+- **Numerical Correctness**: Validates that optimized models produce the same outputs as the original
+- **HuggingFace Integration**: Seamlessly works with models from the HuggingFace Hub
 
 ## Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/MohamedFarouk-1/SparseOpt.git
-cd sparseopt
+cd SparseOpt
 
 # Install dependencies
 pip install -r requirements.txt
-```
 
-## Quickstart
-
-### Optimizing a HuggingFace Model
-
-```bash
-# Run the Colab test script with DistilBERT
-python examples/colab_test.py --hf-model distilbert-base-uncased
-
-# Or use the CLI
-sparseopt optimize --hf-model gpt2 --output-dir results
-```
-
-### Using the Python API
-
-```python
-from sparseopt.huggingface import optimize_hf_model
-
-# Optimize a HuggingFace model
-optimized_model, stats = optimize_hf_model("gpt2")
-
-# Print optimization statistics
-print(f"Speedup: {stats['speedup']:.2f}x")
+# Install the package
+pip install -e .
 ```
 
 ## Usage
 
-### Analyzing a Model
+### Command Line Interface
+
+The simplest way to use SparseOpt is through the command-line interface:
 
 ```bash
-sparseopt analyze --model model.py --class MyModel
+python optimize.py --model bert-base-uncased --device cuda
 ```
 
-### Optimizing a Model
+This will:
+1. Load the specified model from HuggingFace
+2. Benchmark the original model
+3. Apply optimization passes
+4. Benchmark the optimized model
+5. Validate numerical correctness
+6. Print a summary of the results
 
-```bash
-sparseopt optimize --model model.py --class MyModel --output optimized_model.py
+#### Command-line Arguments
+
+- `--model`: Name of the HuggingFace model (required)
+- `--device`: Device to run on (`cuda` or `cpu`, default: `cuda`)
+- `--num-runs`: Number of benchmark runs (default: 10)
+- `--warmup`: Number of warmup runs (default: 3)
+- `--text`: Input text for benchmarking (default: "Hello, this is SparseOpt!")
+- `--max-length`: Maximum sequence length (default: 128)
+
+### Google Colab
+
+You can also use SparseOpt in Google Colab. Here's a simple example:
+
+```python
+# Install dependencies
+!pip install torch torchvision transformers rich
+!git clone https://github.com/MohamedFarouk-1/SparseOpt.git
+%cd SparseOpt
+!pip install -e .
+
+# Import the necessary modules
+from sparseopt.huggingface import optimize_hf_model, load_hf_model, create_hf_input, benchmark_model
+import torch
+
+# Check if CUDA is available
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using device: {device}")
+
+# Load a model and tokenizer
+model_name = "bert-base-uncased"
+model, tokenizer = load_hf_model(model_name, device=device)
+
+# Create example input
+inputs = create_hf_input(tokenizer, "Hello, this is SparseOpt!", device=device)
+
+# Benchmark the original model
+original_results = benchmark_model(model, inputs, device=device, num_runs=10, warmup=3)
+print(f"Original model latency: {original_results['mean_latency']:.2f}ms")
+
+# Optimize the model
+optimized_model, fusion_stats = optimize_hf_model(model_name, device=device)
+
+# Benchmark the optimized model
+optimized_results = benchmark_model(optimized_model, inputs, device=device, num_runs=10, warmup=3)
+print(f"Optimized model latency: {optimized_results['mean_latency']:.2f}ms")
+
+# Calculate speedup
+speedup = original_results["mean_latency"] / optimized_results["mean_latency"]
+print(f"Speedup: {speedup:.2f}x")
 ```
 
-For GNN models:
+## Supported Models
 
-```bash
-sparseopt optimize --model model.py --class GNNModel --output optimized_model.py --gnn
-```
+SparseOpt has been tested with the following models:
 
-### Benchmarking a Model
+- `bert-base-uncased`
+- `distilbert-base-uncased`
+- `facebook/opt-350m`
 
-For standard PyTorch models:
+## Fusion Patterns
 
-```bash
-sparseopt benchmark model.py MyModel --input-shape 1 3 224 224
-```
+SparseOpt currently supports the following fusion patterns:
 
-For Graph Neural Network (GNN) models:
-
-```bash
-sparseopt benchmark gnn_model.py GNNModel --gnn --num-nodes 100 --num-edges 500 --node-features 16
-```
-
-### Testing Output Consistency
-
-```bash
-python tests/test_output_match.py --model model.py --class MyModel --input input.pt --output optimized_model.pt
-```
-
-## Example Output
-
-```
-Optimization Summary Report
-==================================================
-Model: SimpleGCN
-✓ FX Tracing: Successful
-Latency Before: 1.23 ms
-Latency After: 0.87 ms
-Speedup: 1.41x
-Optimizations Applied:
-  • Reorder
-  • Fuse Linear+ReLU
-==================================================
-```
-
-## Sample Models
-
-SparseOpt includes a sample FX-compatible GCN model for testing:
-
-- `sample_models/gcn.py`: A simple GCN model that can be traced by Torch.fx
-- `sample_models/gcn.pt`: The saved model
-- `sample_models/gcn_input.pt`: Sample input data for the model
-
-To generate these files:
-
-```bash
-python examples/generate_sample_models.py
-```
-
-## Known Limitations
-
-- **Dynamic Control Flow**: Torch.fx cannot trace models with dynamic control flow based on tensor values (e.g., `if torch.mean(x) > 0`). Such models will be saved without optimization.
-- **GNN Models**: Most GNN models use PyTorch Geometric's message passing which cannot be traced by Torch.fx. These models will be saved without optimization.
-- **Custom Operations**: Custom operations that cannot be traced by Torch.fx will cause optimization to fail.
-
-## Project Structure
-
-- `sparseopt/`: Main package directory
-  - `cli.py`: Command-line interface
-  - `analyze.py`: Graph analysis tools
-  - `optimize.py`: Optimization passes
-  - `benchmark.py`: Performance benchmarking
-  - `model_loader.py`: Model loading utilities
-  - `utils.py`: Shared utilities
-- `tests/`: Test suite
-- `sample_models/`: Sample models for testing
-
-## Development
-
-1. Clone the repository
-2. Install development dependencies: `pip install -e ".[dev]"`
-3. Run tests: `pytest tests/`
+- **Linear + GELU**: Fuses linear layers followed by GELU activation
+- **Linear + LayerNorm**: Fuses linear layers followed by layer normalization
+- **MultiHeadAttention + LayerNorm**: Fuses multi-head attention followed by layer normalization
 
 ## License
 
-MIT 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [PyTorch](https://pytorch.org/) for the FX framework
+- [HuggingFace](https://huggingface.co/) for the transformer models 
