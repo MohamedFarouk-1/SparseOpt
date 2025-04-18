@@ -4,16 +4,8 @@ Utility functions for SparseOpt.
 This package provides various utility functions for SparseOpt.
 """
 
-from .benchmark import (
-    benchmark_model,
-    print_benchmark_results,
-    compare_models,
-    get_model_info
-)
+from .benchmark import get_model_info
 
 __all__ = [
-    'benchmark_model',
-    'print_benchmark_results',
-    'compare_models',
     'get_model_info'
 ] 
