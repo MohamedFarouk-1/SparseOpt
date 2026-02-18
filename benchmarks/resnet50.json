@@ -1,0 +1,22 @@
+{
+  "model": "resnet50",
+  "device": "cpu",
+  "runs": 100,
+  "warmup": 10,
+  "before": {
+    "latency_ms": 14.539509634487331,
+    "latency_std_ms": 1.1488595725877204,
+    "peak_memory_mb": 0.453125
+  },
+  "after": {
+    "latency_ms": 15.1381887414027,
+    "latency_std_ms": 3.6055061953828758,
+    "peak_memory_mb": 2.546875
+  },
+  "optimization_stats": {
+    "method": "layer_by_layer",
+    "layers_traced": 0,
+    "layers_fused": 0,
+    "total_fusions": 0
+  }
+}

@@ -68,6 +68,7 @@ class NodeReorderingPass(GraphPass):
             
             for node in ready_nodes:
                 if node.op == "output":
+                    processed_nodes.add(node)   # prevent re-queuing
                     continue
                 if self._is_lightweight_op(node):
                     lightweight_nodes.append(node)
@@ -100,16 +101,23 @@ class NodeReorderingPass(GraphPass):
                 if node not in processed_nodes and all(arg in processed_nodes or not isinstance(arg, fx.Node) for arg in node.args):
                     ready_nodes.add(node)
         
-        # Copy output nodes
+        # Copy output nodes — preserve the exact return structure of the original graph
         for node in graph_module.graph.nodes:
             if node.op == "output":
-                new_args = []
-                for arg in node.args:
-                    if isinstance(arg, fx.Node):
-                        new_args.append(node_map[arg])
-                    else:
-                        new_args.append(arg)
-                new_graph.output(tuple(new_args))
+                # args[0] is the value returned by the model (a single Node, a
+                # tuple of Nodes, or None).  Map every embedded Node reference
+                # through node_map without wrapping in an extra tuple.
+                result = node.args[0] if node.args else None
+                if isinstance(result, fx.Node):
+                    new_result = node_map[result]
+                elif isinstance(result, (tuple, list)):
+                    new_result = type(result)(
+                        node_map[x] if isinstance(x, fx.Node) else x
+                        for x in result
+                    )
+                else:
+                    new_result = result
+                new_graph.output(new_result)
         
         # Create a new graph module
         new_graph_module = fx.GraphModule(graph_module, new_graph)

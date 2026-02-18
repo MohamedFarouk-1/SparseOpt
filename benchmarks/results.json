@@ -1,0 +1,92 @@
+[
+  {
+    "model": "resnet50",
+    "device": "cpu",
+    "parameters_M": 25.56,
+    "before": {
+      "latency_ms": 14.901992462109774,
+      "latency_std_ms": 1.950372573429323,
+      "peak_memory_mb": 0.0
+    },
+    "after": {
+      "latency_ms": 14.59447041968815,
+      "latency_std_ms": 0.7665639246011818,
+      "peak_memory_mb": 0.0
+    },
+    "speedup": 1.021,
+    "latency_reduction_pct": -2.06,
+    "optimization_time_ms": 107.6,
+    "stats": {
+      "method": "layer_by_layer",
+      "layers_traced": 0,
+      "layers_fused": 0,
+      "total_fusions": 0
+    }
+  },
+  {
+    "model": "mlp",
+    "device": "cpu",
+    "parameters_M": 6.3,
+    "before": {
+      "latency_ms": 0.3309299412649125,
+      "latency_std_ms": 0.019388760694521813,
+      "peak_memory_mb": 0.0
+    },
+    "after": {
+      "latency_ms": 0.32657534815371037,
+      "latency_std_ms": 0.012361204293592972,
+      "peak_memory_mb": 0.0
+    },
+    "speedup": 1.013,
+    "latency_reduction_pct": -1.32,
+    "optimization_time_ms": 16.6,
+    "stats": {
+      "method": "full_graph",
+      "node_count_before": 11,
+      "node_count_after": 6,
+      "nodes_eliminated": 5,
+      "total_fusions": 37,
+      "correct": true,
+      "dropoutelimination_eliminated_dropouts": 2,
+      "dropoutelimination_correct": true,
+      "deadnodeeliminationpass_eliminated_nodes": 0,
+      "deadnodeeliminationpass_correct": true,
+      "nodereorderingpass_reordered_nodes": 7,
+      "nodereorderingpass_total_nodes": 9,
+      "nodereorderingpass_correct": true,
+      "convbatchnormrelufusion_fused_patterns": 0,
+      "convbatchnormrelufusion_total_nodes": 9,
+      "convbatchnormrelufusion_correct": true,
+      "linearrelufusion_fused_patterns": 3,
+      "linearrelufusion_correct": true,
+      "lineargelufusion_fused_patterns": 0,
+      "lineargelufusion_correct": true,
+      "linearlayernormfusion_fused_patterns": 0,
+      "linearlayernormfusion_correct": true
+    }
+  },
+  {
+    "model": "bert-base",
+    "device": "cpu",
+    "parameters_M": 109.48,
+    "before": {
+      "latency_ms": 18.34859919617884,
+      "latency_std_ms": 1.0769621750360643,
+      "peak_memory_mb": 0.0
+    },
+    "after": {
+      "latency_ms": 17.577592921443284,
+      "latency_std_ms": 1.1170627515981548,
+      "peak_memory_mb": 0.0
+    },
+    "speedup": 1.044,
+    "latency_reduction_pct": -4.2,
+    "optimization_time_ms": 249.0,
+    "stats": {
+      "method": "layer_by_layer",
+      "layers_traced": 37,
+      "layers_fused": 36,
+      "total_fusions": 36
+    }
+  }
+]

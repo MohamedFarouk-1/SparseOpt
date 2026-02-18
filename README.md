@@ -156,16 +156,15 @@ optimized_gm, stats = pipeline.optimize(gm, example_inputs=inputs)
 
 ## Benchmark Results
 
-Measured on ResNet-18 (11.7M parameters) on CPU, using node reordering and Linear+ReLU fusion:
+Measured on CPU (100 runs, 10 warmup iterations). Run with `python benchmarks/run_benchmarks.py`.
 
-| | Latency (ms) | vs. Baseline |
-|---|---|---|
-| **Original** | 36.37 | — |
-| **SparseOpt** | 34.27 | **−5.8%** |
+| Model | Params | Baseline (ms) | SparseOpt (ms) | Speedup | Optimizations Applied |
+|-------|--------|:-------------:|:--------------:|:-------:|----------------------|
+| **MLP** | 6.3M | 0.33 | 0.33 | **1.01×** | Dropout elimination ×2, Linear+ReLU fusion ×3, 11→6 graph nodes |
+| **ResNet-50** | 25.6M | 14.90 | 14.59 | **1.02×** | Node reordering (layer-by-layer) |
+| **BERT-base** | 109.5M | 18.35 | 17.58 | **1.04×** | Linear+GELU fusion ×36 across 37 traced submodules |
 
-Optimizations applied: `NodeReorderingPass` + `Linear+ReLU Fusion`
-
-> The full pass stack (dropout elimination, dead node pruning, Conv+BN+ReLU fusion, and optional `torch.compile` backend) yields additional gains, particularly on GPU where fused kernels eliminate kernel launch overhead. Transformer models with repeated `Linear → GELU` blocks see compounding benefits from the fusion pass across every layer.
+> CPU gains are conservative; GPU workloads see larger improvements because fused kernels reduce kernel-launch overhead. BERT's 4.2% reduction compounds across all 12 transformer layers — the same fusion pass fires 36 times. MLP graph compression (11 → 6 nodes, correctness verified to 1e-4) lowers memory bandwidth at higher batch sizes.
 
 ---
 

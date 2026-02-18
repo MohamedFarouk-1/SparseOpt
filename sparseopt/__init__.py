@@ -1,14 +1,23 @@
 """
-SparseOpt: A PyTorch FX-based model optimization toolkit.
+SparseOpt — PyTorch FX computation graph optimizer.
+
+Quick start:
+    from sparseopt import optimize_model, get_demo_model
+
+    model, inputs = get_demo_model("resnet50", device="cpu")
+    optimized, stats = optimize_model(model, inputs)
+    print(stats)
 """
 
-from .utils import get_model_info
-# from .optimize import optimize_model  # (Temporarily disabled due to missing function)
-from .huggingface import optimize_hf_model
+from .core import optimize_model, PASS_REGISTRY, DEFAULT_PASSES
+from .models import get_demo_model
+from .benchmark import measure_latency_and_memory
 
 __version__ = "0.1.0"
-
 __all__ = [
-    "optimize_hf_model",
-    "get_model_info"
-] 
+    "optimize_model",
+    "get_demo_model",
+    "measure_latency_and_memory",
+    "PASS_REGISTRY",
+    "DEFAULT_PASSES",
+]

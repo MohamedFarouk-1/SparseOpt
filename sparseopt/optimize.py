@@ -12,9 +12,7 @@ import json
 import os
 import logging
 
-from .analyze import SymbolicConditionalError
-from .transformer_fusion import apply_transformer_fusion_passes
-from .fusion_pass import FusionPass, FusionResult
+from .errors import SymbolicConditionalError
 
 console = Console()
 logger = logging.getLogger(__name__)
